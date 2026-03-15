@@ -1,12 +1,13 @@
 """Vercel Serverless Function: 生成 Entrohub 小红书封面图"""
 
-import base64
 import io
 import re
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
+from flask import Flask, request, Response
 from PIL import Image, ImageDraw, ImageFont
+
+app = Flask(__name__)
 
 # 路径
 BASE_DIR = Path(__file__).parent.parent
@@ -25,17 +26,17 @@ WIDTH = 1080
 HEIGHT = 1080
 
 
-def has_cjk(text: str) -> bool:
+def has_cjk(text):
     return bool(re.search(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]', text))
 
 
-def get_font(size: int, text: str = "") -> ImageFont.FreeTypeFont:
+def get_font(size, text=""):
     if has_cjk(text):
         return ImageFont.truetype(str(NOTO_FONT), size)
     return ImageFont.truetype(str(JAKARTA_FONT), size)
 
 
-def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list:
+def wrap_text(text, font, max_width):
     lines = []
     for paragraph in text.split('\n'):
         if not paragraph.strip():
@@ -56,17 +57,13 @@ def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list:
     return lines
 
 
-def create_cover(title: str) -> bytes:
+def create_cover(title):
     img = Image.new('RGB', (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(img)
 
-    # 顶部蓝色装饰条
     draw.rectangle([0, 0, WIDTH, 8], fill=BLUE_PRIMARY)
-
-    # 左侧蓝色装饰线
     draw.rectangle([60, 200, 66, HEIGHT - 200], fill=BLUE_PRIMARY)
 
-    # 标题
     font_size = 72 if has_cjk(title) else 64
     title_font = get_font(font_size, title)
     max_text_width = WIDTH - 200
@@ -81,56 +78,40 @@ def create_cover(title: str) -> bytes:
         y = start_y + i * line_height
         draw.text((text_x, y), line, fill=BLACK, font=title_font)
 
-    # Logo + 品牌名
     try:
         logo = Image.open(LOGO_PATH).convert("RGBA")
         logo = logo.resize((60, 60), Image.LANCZOS)
         img.paste(logo, (text_x, HEIGHT - 120), logo)
-
         brand_font = get_font(28)
         draw.text((text_x + 76, HEIGHT - 104), "Entrohub", fill=BLUE_PRIMARY, font=brand_font)
     except FileNotFoundError:
         pass
 
-    # 底部标签
     tag_font = get_font(22, "创业者社群 · 柏林")
     draw.text((text_x, HEIGHT - 60), "创业者社群 · 柏林", fill=(150, 150, 150), font=tag_font)
 
-    # 输出 PNG bytes
     buf = io.BytesIO()
     img.save(buf, "PNG", quality=95)
     buf.seek(0)
     return buf.getvalue()
 
 
-def handler(request):
-    """Vercel Python serverless handler (function format)"""
-    parsed = urlparse(request.url)
-    params = parse_qs(parsed.query)
-    title = params.get("title", [""])[0]
+@app.route("/api/generate", methods=["GET"])
+def generate():
+    title = request.args.get("title", "")
 
     if not title:
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": '{"error": "title is required"}',
-        }
+        return {"error": "title is required"}, 400
 
     try:
         img_bytes = create_cover(title)
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "image/png",
+        return Response(
+            img_bytes,
+            mimetype="image/png",
+            headers={
                 "Content-Disposition": "inline; filename=cover.png",
                 "Cache-Control": "public, max-age=3600",
             },
-            "body": base64.b64encode(img_bytes).decode(),
-            "isBase64Encoded": True,
-        }
+        )
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": f'{{"error": "{str(e)}"}}',
-        }
+        return {"error": str(e)}, 500
