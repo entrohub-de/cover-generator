@@ -96,7 +96,8 @@ def create_cover(title):
     return buf.getvalue()
 
 
-@app.route("/api/generate", methods=["GET"])
+@app.route("/api", methods=["GET"])
+@app.route("/api/", methods=["GET"])
 def generate():
     title = request.args.get("title", "")
 

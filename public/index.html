@@ -161,7 +161,7 @@
             preview.style.display = 'none';
 
             try {
-                const res = await fetch(`/api/generate?title=${encodeURIComponent(title)}`);
+                const res = await fetch(`/api?title=${encodeURIComponent(title)}`);
                 if (!res.ok) throw new Error('生成失败');
 
                 const blob = await res.blob();
