@@ -1,8 +1,8 @@
 """Vercel Serverless Function: 生成 Entrohub 小红书封面图"""
 
+import base64
 import io
 import re
-from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -103,36 +103,34 @@ def create_cover(title: str) -> bytes:
     return buf.getvalue()
 
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        parsed = urlparse(self.path)
-        params = parse_qs(parsed.query)
-        title = params.get("title", [""])[0]
+def handler(request):
+    """Vercel Python serverless handler (function format)"""
+    parsed = urlparse(request.url)
+    params = parse_qs(parsed.query)
+    title = params.get("title", [""])[0]
 
-        if not title:
-            self.send_response(400)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(b'{"error": "title is required"}')
-            return
+    if not title:
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": '{"error": "title is required"}',
+        }
 
-        try:
-            img_bytes = create_cover(title)
-            self.send_response(200)
-            self.send_header("Content-Type", "image/png")
-            self.send_header("Content-Disposition", "inline; filename=cover.png")
-            self.send_header("Cache-Control", "public, max-age=3600")
-            self.end_headers()
-            self.wfile.write(img_bytes)
-        except Exception as e:
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(f'{{"error": "{str(e)}"}}'.encode())
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
+    try:
+        img_bytes = create_cover(title)
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "image/png",
+                "Content-Disposition": "inline; filename=cover.png",
+                "Cache-Control": "public, max-age=3600",
+            },
+            "body": base64.b64encode(img_bytes).decode(),
+            "isBase64Encoded": True,
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": f'{{"error": "{str(e)}"}}',
+        }
