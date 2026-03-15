@@ -161,7 +161,7 @@ def create_cover(
 
     # 底部标签线
     tag_font = get_font(22)
-    tag_text = "创业者社群 · 柏林"
+    tag_text = "华人创业者社群 · 德国"
     if has_cjk(tag_text):
         tag_font = get_font(22, tag_text)
     draw.text(

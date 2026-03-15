@@ -79,8 +79,8 @@ def create_cover(title):
     except Exception:
         pass
 
-    tag_font = get_font(22, "创业者社群 · 柏林")
-    draw.text((text_x, HEIGHT - 60), "创业者社群 · 柏林", fill=(150, 150, 150), font=tag_font)
+    tag_font = get_font(22, "华人创业者社群 · 德国")
+    draw.text((text_x, HEIGHT - 60), "华人创业者社群 · 德国", fill=(150, 150, 150), font=tag_font)
 
     buf = io.BytesIO()
     img.save(buf, "PNG", quality=95)
