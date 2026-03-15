@@ -1,19 +1,17 @@
 """Vercel Serverless Function: 生成 Entrohub 小红书封面图"""
 
 import io
-import re
+import json
 import os
-
-from flask import Flask, request, Response, send_from_directory
-
-app = Flask(__name__, static_folder=None)
+import re
+from urllib.parse import parse_qs, urlparse
 
 API_DIR = os.path.dirname(os.path.abspath(__file__))
-PUBLIC_DIR = os.path.join(os.path.dirname(API_DIR), "public")
 FONTS_DIR = os.path.join(API_DIR, "fonts")
 LOGO_FILE = os.path.join(API_DIR, "logo.png")
 JAKARTA_FONT = os.path.join(FONTS_DIR, "PlusJakartaSans.ttf")
 NOTO_FONT = os.path.join(FONTS_DIR, "NotoSansCJKsc-Bold.otf")
+PUBLIC_DIR = os.path.join(os.path.dirname(API_DIR), "public")
 
 BLUE_PRIMARY = (66, 133, 244)
 WHITE = (255, 255, 255)
@@ -56,14 +54,12 @@ def create_cover(title):
 
     img = Image.new('RGB', (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(img)
-
     draw.rectangle([0, 0, WIDTH, 8], fill=BLUE_PRIMARY)
     draw.rectangle([60, 200, 66, HEIGHT - 200], fill=BLUE_PRIMARY)
 
     font_size = 72 if has_cjk(title) else 64
     title_font = get_font(font_size, title)
     lines = wrap_text(title, title_font, WIDTH - 200)
-
     line_height = int(font_size * 1.6)
     total_text_height = len(lines) * line_height
     start_y = (HEIGHT - total_text_height) // 2 - 40
@@ -90,31 +86,47 @@ def create_cover(title):
     return buf.getvalue()
 
 
-@app.route("/")
-def index():
-    return send_from_directory(PUBLIC_DIR, "index.html")
+def app(environ, start_response):
+    """Pure WSGI app - no Flask"""
+    path = environ.get("PATH_INFO", "/")
+    method = environ.get("REQUEST_METHOD", "GET")
 
+    if path == "/" or path == "":
+        html_path = os.path.join(PUBLIC_DIR, "index.html")
+        with open(html_path, "rb") as f:
+            body = f.read()
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
 
-@app.route("/logo.png")
-def logo_static():
-    return send_from_directory(PUBLIC_DIR, "logo.png")
+    if path == "/logo.png":
+        logo_path = os.path.join(PUBLIC_DIR, "logo.png")
+        with open(logo_path, "rb") as f:
+            body = f.read()
+        start_response("200 OK", [("Content-Type", "image/png")])
+        return [body]
 
+    if path in ("/api", "/api/") and method == "GET":
+        qs = environ.get("QUERY_STRING", "")
+        params = parse_qs(qs)
+        title = params.get("title", [""])[0]
 
-@app.route("/api", methods=["GET"])
-@app.route("/api/", methods=["GET"])
-def generate():
-    title = request.args.get("title", "")
-    if not title:
-        return {"error": "title is required"}, 400
-    try:
-        img_bytes = create_cover(title)
-        return Response(
-            img_bytes,
-            mimetype="image/png",
-            headers={
-                "Content-Disposition": "inline; filename=cover.png",
-                "Cache-Control": "public, max-age=3600",
-            },
-        )
-    except Exception as e:
-        return {"error": str(e)}, 500
+        if not title:
+            body = json.dumps({"error": "title is required"}).encode()
+            start_response("400 Bad Request", [("Content-Type", "application/json")])
+            return [body]
+
+        try:
+            img_bytes = create_cover(title)
+            start_response("200 OK", [
+                ("Content-Type", "image/png"),
+                ("Content-Disposition", "inline; filename=cover.png"),
+                ("Cache-Control", "public, max-age=3600"),
+            ])
+            return [img_bytes]
+        except Exception as e:
+            body = json.dumps({"error": str(e)}).encode()
+            start_response("500 Internal Server Error", [("Content-Type", "application/json")])
+            return [body]
+
+    start_response("404 Not Found", [("Content-Type", "text/plain")])
+    return [b"Not Found"]
