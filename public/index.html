@@ -80,6 +80,27 @@
             color: var(--cat-color);
             border-color: var(--cat-color);
         }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .slider-row label {
+            font-size: 13px;
+            color: #666;
+            white-space: nowrap;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            accent-color: #4285F4;
+        }
+        .slider-row span {
+            font-size: 13px;
+            color: #888;
+            min-width: 28px;
+            text-align: right;
+        }
         textarea {
             width: 100%;
             height: 140px;
@@ -196,6 +217,12 @@
             <textarea id="title" placeholder="输入封面标题文字，比如：&#10;两个陌生人在聚会上聊了30分钟&#10;当场加了联系方式" maxlength="100"></textarea>
             <div class="char-count"><span id="count">0</span>/100</div>
 
+            <div class="slider-row">
+                <label>字体大小</label>
+                <input type="range" id="fontSize" min="40" max="120" value="72" step="4">
+                <span id="fontSizeVal">72</span>
+            </div>
+
             <button id="generateBtn" onclick="generate()">生成封面</button>
             <p class="hint">Cmd+Enter 快速生成</p>
         </div>
@@ -216,6 +243,16 @@
 
         let debounceTimer = null;
         let selectedCategory = '';
+        const fontSlider = document.getElementById('fontSize');
+        const fontSizeVal = document.getElementById('fontSizeVal');
+
+        fontSlider.addEventListener('input', () => {
+            fontSizeVal.textContent = fontSlider.value;
+            clearTimeout(debounceTimer);
+            if (textarea.value.trim()) {
+                debounceTimer = setTimeout(generate, 300);
+            }
+        });
 
         // 栏目选择
         document.querySelectorAll('.cat-btn').forEach(btn => {
@@ -254,7 +291,7 @@
             placeholder.style.display = 'none';
 
             try {
-                const res = await fetch(`/api?title=${encodeURIComponent(title)}&category=${encodeURIComponent(selectedCategory)}`);
+                const res = await fetch(`/api?title=${encodeURIComponent(title)}&category=${encodeURIComponent(selectedCategory)}&fontsize=${fontSlider.value}`);
                 if (!res.ok) throw new Error('生成失败');
 
                 const blob = await res.blob();

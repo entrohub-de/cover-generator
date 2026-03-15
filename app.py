@@ -34,7 +34,7 @@ def has_cjk(text):
     return bool(re.search(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]', text))
 
 
-def create_cover(title, category=""):
+def create_cover(title, category="", fontsize=0):
     from PIL import Image, ImageDraw, ImageFont
 
     def get_font(size, text=""):
@@ -74,7 +74,7 @@ def create_cover(title, category=""):
         cat_font = get_font(28, category)
         draw.text((100, 160), category, fill=accent, font=cat_font)
 
-    font_size = 72 if has_cjk(title) else 64
+    font_size = fontsize if fontsize else (72 if has_cjk(title) else 64)
     title_font = get_font(font_size, title)
     lines = wrap_text(title, title_font, WIDTH - 200)
     line_height = int(font_size * 1.6)
@@ -115,6 +115,7 @@ class Handler(SimpleHTTPRequestHandler):
             title = params.get("title", [""])[0]
 
             category = params.get("category", [""])[0]
+            fontsize = int(params.get("fontsize", ["0"])[0] or 0)
 
             if not title:
                 self.send_response(400)
@@ -124,7 +125,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
 
             try:
-                img_bytes = create_cover(title, category)
+                img_bytes = create_cover(title, category, fontsize)
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Content-Disposition", "inline; filename=cover.png")
