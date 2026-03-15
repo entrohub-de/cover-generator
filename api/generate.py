@@ -1,9 +1,10 @@
 """Vercel Serverless Function: 生成 Entrohub 小红书封面图"""
 
 import io
-import os
 import re
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -17,8 +18,6 @@ NOTO_FONT = FONTS_DIR / "NotoSansCJKsc-Bold.otf"
 
 # 品牌色
 BLUE_PRIMARY = (66, 133, 244)
-BLUE_DARK = (30, 64, 175)
-ORANGE_ACCENT = (232, 115, 74)
 WHITE = (255, 255, 255)
 BLACK = (33, 33, 33)
 
@@ -104,45 +103,36 @@ def create_cover(title: str) -> bytes:
     return buf.getvalue()
 
 
-def handler(request):
-    """Vercel Serverless handler"""
-    from http.server import BaseHTTPRequestHandler
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        title = params.get("title", [""])[0]
 
-    if request.method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            },
-        }
+        if not title:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error": "title is required"}')
+            return
 
-    if request.method == "GET":
-        title = request.args.get("title", "")
-    else:
-        import json
-        body = json.loads(request.body)
-        title = body.get("title", "")
+        try:
+            img_bytes = create_cover(title)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Disposition", "inline; filename=cover.png")
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(img_bytes)
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(f'{{"error": "{str(e)}"}}'.encode())
 
-    if not title:
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": '{"error": "title is required"}',
-        }
-
-    img_bytes = create_cover(title)
-
-    import base64
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": "image/png",
-            "Content-Disposition": "inline; filename=cover.png",
-            "Access-Control-Allow-Origin": "*",
-            "Cache-Control": "public, max-age=3600",
-        },
-        "body": base64.b64encode(img_bytes).decode(),
-        "isBase64Encoded": True,
-    }
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
