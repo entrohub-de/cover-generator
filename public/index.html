@@ -54,6 +54,32 @@
             font-size: 14px;
             margin-bottom: 24px;
         }
+        .category-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .cat-btn {
+            width: auto;
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 20px;
+            background: #f0f0f5;
+            color: #666;
+            border: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .cat-btn:hover {
+            background: #e8e8ee;
+        }
+        .cat-btn.active {
+            background: white;
+            color: var(--cat-color);
+            border-color: var(--cat-color);
+        }
         textarea {
             width: 100%;
             height: 140px;
@@ -158,6 +184,15 @@
             <h1>封面生成器</h1>
             <p class="subtitle">输入标题，一键生成小红书封面图 (1080×1440)</p>
 
+            <div class="category-bar" id="categoryBar">
+                <button class="cat-btn active" data-cat="" style="--cat-color: #4285F4">全部</button>
+                <button class="cat-btn" data-cat="创业洞察" style="--cat-color: #4285F4">创业洞察</button>
+                <button class="cat-btn" data-cat="成员故事" style="--cat-color: #E8734A">成员故事</button>
+                <button class="cat-btn" data-cat="活动预告" style="--cat-color: #34A853">活动预告</button>
+                <button class="cat-btn" data-cat="幕后故事" style="--cat-color: #8E44DF">幕后故事</button>
+                <button class="cat-btn" data-cat="活动复盘" style="--cat-color: #E9517F">活动复盘</button>
+            </div>
+
             <textarea id="title" placeholder="输入封面标题文字，比如：&#10;两个陌生人在聚会上聊了30分钟&#10;当场加了联系方式" maxlength="100"></textarea>
             <div class="char-count"><span id="count">0</span>/100</div>
 
@@ -180,6 +215,17 @@
         const count = document.getElementById('count');
 
         let debounceTimer = null;
+        let selectedCategory = '';
+
+        // 栏目选择
+        document.querySelectorAll('.cat-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedCategory = btn.dataset.cat;
+                if (textarea.value.trim()) generate();
+            });
+        });
 
         textarea.addEventListener('input', () => {
             count.textContent = textarea.value.length;
@@ -208,7 +254,7 @@
             placeholder.style.display = 'none';
 
             try {
-                const res = await fetch(`/api?title=${encodeURIComponent(title)}`);
+                const res = await fetch(`/api?title=${encodeURIComponent(title)}&category=${encodeURIComponent(selectedCategory)}`);
                 if (!res.ok) throw new Error('生成失败');
 
                 const blob = await res.blob();

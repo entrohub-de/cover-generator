@@ -21,12 +21,20 @@ BLACK = (33, 33, 33)
 WIDTH = 1080
 HEIGHT = 1440
 
+CATEGORY_COLORS = {
+    "创业洞察": (66, 133, 244),    # 蓝
+    "成员故事": (232, 115, 74),    # 橙
+    "活动预告": (52, 168, 83),     # 绿
+    "幕后故事": (142, 68, 223),    # 紫
+    "活动复盘": (233, 81, 127),    # 粉
+}
+
 
 def has_cjk(text):
     return bool(re.search(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]', text))
 
 
-def create_cover(title):
+def create_cover(title, category=""):
     from PIL import Image, ImageDraw, ImageFont
 
     def get_font(size, text=""):
@@ -54,10 +62,17 @@ def create_cover(title):
                 lines.append(current_line)
         return lines
 
+    accent = CATEGORY_COLORS.get(category, BLUE_PRIMARY)
+
     img = Image.new('RGB', (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(img)
-    draw.rectangle([0, 0, WIDTH, 8], fill=BLUE_PRIMARY)
-    draw.rectangle([60, 200, 66, HEIGHT - 200], fill=BLUE_PRIMARY)
+    draw.rectangle([0, 0, WIDTH, 8], fill=accent)
+    draw.rectangle([60, 200, 66, HEIGHT - 200], fill=accent)
+
+    # 栏目标签
+    if category:
+        cat_font = get_font(28, category)
+        draw.text((100, 160), category, fill=accent, font=cat_font)
 
     font_size = 72 if has_cjk(title) else 64
     title_font = get_font(font_size, title)
@@ -75,7 +90,7 @@ def create_cover(title):
         logo = logo.resize((60, 60), Image.LANCZOS)
         img.paste(logo, (text_x, HEIGHT - 120), logo)
         brand_font = get_font(28)
-        draw.text((text_x + 76, HEIGHT - 104), "Entrohub", fill=BLUE_PRIMARY, font=brand_font)
+        draw.text((text_x + 76, HEIGHT - 104), "Entrohub", fill=accent, font=brand_font)
     except Exception:
         pass
 
@@ -99,6 +114,8 @@ class Handler(SimpleHTTPRequestHandler):
             params = parse_qs(parsed.query)
             title = params.get("title", [""])[0]
 
+            category = params.get("category", [""])[0]
+
             if not title:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
@@ -107,7 +124,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
 
             try:
-                img_bytes = create_cover(title)
+                img_bytes = create_cover(title, category)
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Content-Disposition", "inline; filename=cover.png")
