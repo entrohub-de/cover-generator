@@ -1,5 +1,4 @@
 {
-  "outputDirectory": "public",
   "functions": {
     "api/*.py": {
       "includeFiles": "fonts/**,public/logo.png"
