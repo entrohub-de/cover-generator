@@ -3,3 +3,4 @@ __pycache__/
 成员故事_*.png
 output_*.png
 .vercel/
+.DS_Store
