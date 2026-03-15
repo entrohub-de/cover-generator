@@ -1,11 +1,8 @@
 {
   "outputDirectory": "public",
   "functions": {
-    "api/generate.py": {
+    "api/*.py": {
       "includeFiles": "fonts/**,public/logo.png"
     }
-  },
-  "rewrites": [
-    { "source": "/api/generate", "destination": "/api/generate" }
-  ]
+  }
 }
