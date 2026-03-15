@@ -1,19 +1,12 @@
 {
-  "builds": [
-    {
-      "src": "api/generate.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": "fonts/**,public/logo.png"
-      }
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
+  "outputDirectory": "public",
+  "functions": {
+    "api/generate.py": {
+      "runtime": "@vercel/python@4",
+      "includeFiles": "fonts/**,public/logo.png"
     }
-  ],
-  "routes": [
-    { "src": "/api/generate", "dest": "/api/generate.py" },
-    { "src": "/(.*)", "dest": "/public/$1" }
+  },
+  "rewrites": [
+    { "source": "/api/generate", "destination": "/api/generate" }
   ]
 }
