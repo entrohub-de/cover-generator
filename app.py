@@ -15,11 +15,8 @@ JAKARTA_FONT = os.path.join(FONTS_DIR, "PlusJakartaSans.ttf")
 NOTO_FONT = os.path.join(FONTS_DIR, "NotoSansCJKsc-Bold.otf")
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 
-BLUE_PRIMARY = (66, 133, 244)
-WHITE = (255, 255, 255)
-BLACK = (33, 33, 33)
-WIDTH = 1080
-HEIGHT = 1440
+WIDTH = 1024
+HEIGHT = 1365
 
 CATEGORY_COLORS = {
     "创业洞察": (66, 133, 244),    # 蓝
@@ -29,12 +26,27 @@ CATEGORY_COLORS = {
     "活动复盘": (233, 81, 127),    # 粉
 }
 
+CATEGORY_LABELS = {
+    "创业洞察": "创业认知",
+    "成员故事": "Builders Meet Builders",
+    "活动预告": "UPCOMING EVENT",
+    "幕后故事": "BEHIND THE SCENES",
+    "活动复盘": "EVENT REVIEW",
+}
+
+BG_COLORS = {
+    "warm_white": (252, 250, 245),
+    "light_cream": (245, 240, 230),
+    "muted_yellow": (245, 235, 200),
+    "charcoal": (35, 35, 35),
+}
+
 
 def has_cjk(text):
     return bool(re.search(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]', text))
 
 
-def create_cover(title, category="", fontsize=0):
+def create_cover(title, category="", fontsize=0, bg="warm_white"):
     from PIL import Image, ImageDraw, ImageFont
 
     def get_font(size, text=""):
@@ -42,60 +54,114 @@ def create_cover(title, category="", fontsize=0):
             return ImageFont.truetype(NOTO_FONT, size)
         return ImageFont.truetype(JAKARTA_FONT, size)
 
-    def wrap_text(text, font, max_width):
+    def text_width(text, font):
+        bbox = font.getbbox(text)
+        return bbox[2] - bbox[0]
+
+    def wrap_title(text, font, max_chars_per_line=8):
+        """按最多 max_chars_per_line 个字符换行"""
         lines = []
         for paragraph in text.split('\n'):
-            if not paragraph.strip():
-                lines.append('')
+            paragraph = paragraph.strip()
+            if not paragraph:
                 continue
-            current_line = ''
-            for char in paragraph:
-                test_line = current_line + char
-                bbox = font.getbbox(test_line)
-                if bbox[2] - bbox[0] > max_width:
-                    if current_line:
-                        lines.append(current_line)
-                    current_line = char
-                else:
-                    current_line = test_line
-            if current_line:
-                lines.append(current_line)
+            while len(paragraph) > max_chars_per_line:
+                lines.append(paragraph[:max_chars_per_line])
+                paragraph = paragraph[max_chars_per_line:]
+            if paragraph:
+                lines.append(paragraph)
         return lines
 
-    accent = CATEGORY_COLORS.get(category, BLUE_PRIMARY)
+    # 颜色
+    bg_color = BG_COLORS.get(bg, BG_COLORS["warm_white"])
+    is_dark = bg == "charcoal"
+    text_color = (255, 255, 255) if is_dark else (33, 33, 33)
+    subtle_color = (120, 120, 120) if not is_dark else (160, 160, 160)
+    accent = CATEGORY_COLORS.get(category, (66, 133, 244))
 
-    img = Image.new('RGB', (WIDTH, HEIGHT), WHITE)
+    img = Image.new('RGB', (WIDTH, HEIGHT), bg_color)
     draw = ImageDraw.Draw(img)
-    draw.rectangle([0, 0, WIDTH, 8], fill=accent)
-    draw.rectangle([60, 200, 66, HEIGHT - 200], fill=accent)
 
-    # 栏目标签
-    if category:
-        cat_font = get_font(28, category)
-        draw.text((100, 160), category, fill=accent, font=cat_font)
+    # === 顶部 10%: 栏目标签 ===
+    top_area_h = int(HEIGHT * 0.10)
+    label_text = CATEGORY_LABELS.get(category, "ENTROHUB")
+    label_font = get_font(24, label_text)
+    lw = text_width(label_text, label_font)
+    label_x = (WIDTH - lw) // 2
+    label_y = top_area_h // 2
+    draw.text((label_x, label_y), label_text, fill=accent, font=label_font)
 
-    font_size = fontsize if fontsize else (72 if has_cjk(title) else 64)
+    # === 中间 60%: 大标题 ===
+    title_area_top = int(HEIGHT * 0.12)
+    title_area_bottom = int(HEIGHT * 0.70)
+    title_area_h = title_area_bottom - title_area_top
+
+    font_size = fontsize if fontsize else (80 if has_cjk(title) else 72)
     title_font = get_font(font_size, title)
-    lines = wrap_text(title, title_font, WIDTH - 200)
-    line_height = int(font_size * 1.6)
-    total_text_height = len(lines) * line_height
-    start_y = (HEIGHT - total_text_height) // 2 - 40
-    text_x = 100
+
+    max_chars = max(4, int(WIDTH * 0.8 / font_size)) if has_cjk(title) else 20
+    lines = wrap_title(title, title_font, max_chars)
+    # 限制最多4行
+    lines = lines[:4]
+
+    line_height = int(font_size * 1.5)
+    total_text_h = len(lines) * line_height
+    start_y = title_area_top + (title_area_h - total_text_h) // 2
 
     for i, line in enumerate(lines):
-        draw.text((text_x, start_y + i * line_height), line, fill=BLACK, font=title_font)
+        lw = text_width(line, title_font)
+        x = (WIDTH - lw) // 2
+        y = start_y + i * line_height
+        draw.text((x, y), line, fill=text_color, font=title_font)
 
+    # === 底部 30%: 视觉锚点 + 品牌 ===
+    bottom_area_top = int(HEIGHT * 0.70)
+
+    # 分隔线
+    line_y = bottom_area_top + 20
+    line_w = 60
+    draw.line(
+        [(WIDTH // 2 - line_w, line_y), (WIDTH // 2 + line_w, line_y)],
+        fill=accent, width=3
+    )
+
+    # Logo
     try:
         logo = Image.open(LOGO_FILE).convert("RGBA")
-        logo = logo.resize((60, 60), Image.LANCZOS)
-        img.paste(logo, (text_x, HEIGHT - 120), logo)
-        brand_font = get_font(28)
-        draw.text((text_x + 76, HEIGHT - 104), "Entrohub", fill=accent, font=brand_font)
-    except Exception:
-        pass
+        logo_size = 80
+        logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
 
-    tag_font = get_font(22, "华人创业者社群 · 德国")
-    draw.text((text_x, HEIGHT - 60), "华人创业者社群 · 德国", fill=(150, 150, 150), font=tag_font)
+        logo_x = (WIDTH - logo_size) // 2
+        logo_y = line_y + 40
+
+        if is_dark:
+            circle_bg = Image.new("RGBA", (logo_size + 16, logo_size + 16), (0, 0, 0, 0))
+            circle_draw = ImageDraw.Draw(circle_bg)
+            circle_draw.ellipse(
+                [0, 0, logo_size + 16, logo_size + 16],
+                fill=(255, 255, 255, 200)
+            )
+            img.paste(circle_bg, (logo_x - 8, logo_y - 8), circle_bg)
+
+        img.paste(logo, (logo_x, logo_y), logo)
+    except Exception:
+        logo_y = line_y + 40
+
+    # ENTROHUB 品牌文字
+    brand_font = get_font(22)
+    brand_text = "ENTROHUB"
+    bw = text_width(brand_text, brand_font)
+    brand_x = (WIDTH - bw) // 2
+    brand_y = logo_y + 90
+    draw.text((brand_x, brand_y), brand_text, fill=subtle_color, font=brand_font)
+
+    # 副标语
+    tagline_font = get_font(18, "华人创业者社群 · 德国")
+    tagline = "华人创业者社群 · 德国"
+    tw = text_width(tagline, tagline_font)
+    tag_x = (WIDTH - tw) // 2
+    tag_y = brand_y + 36
+    draw.text((tag_x, tag_y), tagline, fill=subtle_color, font=tagline_font)
 
     buf = io.BytesIO()
     img.save(buf, "PNG", quality=95)
@@ -113,9 +179,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path in ("/api", "/api/"):
             params = parse_qs(parsed.query)
             title = params.get("title", [""])[0]
-
             category = params.get("category", [""])[0]
             fontsize = int(params.get("fontsize", ["0"])[0] or 0)
+            bg = params.get("bg", ["warm_white"])[0]
 
             if not title:
                 self.send_response(400)
@@ -125,7 +191,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
 
             try:
-                img_bytes = create_cover(title, category, fontsize)
+                img_bytes = create_cover(title, category, fontsize, bg)
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Content-Disposition", "inline; filename=cover.png")

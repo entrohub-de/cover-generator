@@ -101,6 +101,29 @@
             min-width: 28px;
             text-align: right;
         }
+        .bg-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .bg-bar label {
+            font-size: 13px;
+            color: #666;
+            white-space: nowrap;
+        }
+        .bg-options { display: flex; gap: 8px; }
+        .bg-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.2s;
+        }
+        .bg-btn:hover { transform: scale(1.1); }
+        .bg-btn.active { border-color: #4285F4; box-shadow: 0 0 0 2px rgba(66,133,244,0.3); }
         textarea {
             width: 100%;
             height: 140px;
@@ -203,7 +226,7 @@
             </div>
 
             <h1>封面生成器</h1>
-            <p class="subtitle">输入标题，一键生成小红书封面图 (1080×1440)</p>
+            <p class="subtitle">输入标题，一键生成小红书封面图 (1024×1365)</p>
 
             <div class="category-bar" id="categoryBar">
                 <button class="cat-btn active" data-cat="" style="--cat-color: #4285F4">全部</button>
@@ -219,8 +242,18 @@
 
             <div class="slider-row">
                 <label>字体大小</label>
-                <input type="range" id="fontSize" min="40" max="120" value="72" step="4">
-                <span id="fontSizeVal">72</span>
+                <input type="range" id="fontSize" min="40" max="120" value="80" step="4">
+                <span id="fontSizeVal">80</span>
+            </div>
+
+            <div class="bg-bar">
+                <label>背景色</label>
+                <div class="bg-options">
+                    <button class="bg-btn active" data-bg="warm_white" style="background:#FCFAF5" title="暖白"></button>
+                    <button class="bg-btn" data-bg="light_cream" style="background:#F5F0E6" title="米色"></button>
+                    <button class="bg-btn" data-bg="muted_yellow" style="background:#F5EBC8" title="淡黄"></button>
+                    <button class="bg-btn" data-bg="charcoal" style="background:#232323" title="深灰"></button>
+                </div>
             </div>
 
             <button id="generateBtn" onclick="generate()">生成封面</button>
@@ -243,6 +276,17 @@
 
         let debounceTimer = null;
         let selectedCategory = '';
+        let selectedBg = 'warm_white';
+
+        // 背景色选择
+        document.querySelectorAll('.bg-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.bg-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedBg = btn.dataset.bg;
+                if (textarea.value.trim()) generate();
+            });
+        });
         const fontSlider = document.getElementById('fontSize');
         const fontSizeVal = document.getElementById('fontSizeVal');
 
@@ -291,7 +335,7 @@
             placeholder.style.display = 'none';
 
             try {
-                const res = await fetch(`/api?title=${encodeURIComponent(title)}&category=${encodeURIComponent(selectedCategory)}&fontsize=${fontSlider.value}`);
+                const res = await fetch(`/api?title=${encodeURIComponent(title)}&category=${encodeURIComponent(selectedCategory)}&fontsize=${fontSlider.value}&bg=${selectedBg}`);
                 if (!res.ok) throw new Error('生成失败');
 
                 const blob = await res.blob();
