@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrohub 封面生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: #f5f5fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .logo img { width: 40px; height: 40px; }
+        .logo span { font-size: 20px; font-weight: 700; color: #212121; }
+        h1 {
+            font-size: 24px;
+            color: #212121;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4285F4;
+        }
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+            margin-bottom: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1E40AF; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .preview {
+            margin-top: 24px;
+            text-align: center;
+            display: none;
+        }
+        .preview img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .download-btn {
+            margin-top: 12px;
+            background: #212121;
+        }
+        .download-btn:hover { background: #000; }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #4285F4;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4285F4;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="/logo.png" alt="Entrohub">
+            <span>Entrohub</span>
+        </div>
+
+        <h1>封面生成器</h1>
+        <p class="subtitle">输入标题，一键生成小红书封面图 (1080×1080)</p>
+
+        <textarea id="title" placeholder="输入封面标题文字，比如：&#10;两个陌生人在聚会上聊了30分钟&#10;当场加了联系方式" maxlength="100"></textarea>
+        <div class="char-count"><span id="count">0</span>/100</div>
+
+        <button id="generateBtn" onclick="generate()">生成封面</button>
+
+        <div class="loading" id="loading">生成中</div>
+
+        <div class="preview" id="preview">
+            <img id="coverImg" alt="封面预览">
+            <button class="download-btn" onclick="download()">下载封面图</button>
+        </div>
+    </div>
+
+    <script>
+        const textarea = document.getElementById('title');
+        const count = document.getElementById('count');
+
+        textarea.addEventListener('input', () => {
+            count.textContent = textarea.value.length;
+        });
+
+        let currentBlob = null;
+
+        async function generate() {
+            const title = textarea.value.trim();
+            if (!title) return;
+
+            const btn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const preview = document.getElementById('preview');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            preview.style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/generate?title=${encodeURIComponent(title)}`);
+                if (!res.ok) throw new Error('生成失败');
+
+                const blob = await res.blob();
+                currentBlob = blob;
+
+                const img = document.getElementById('coverImg');
+                img.src = URL.createObjectURL(blob);
+                preview.style.display = 'block';
+            } catch (e) {
+                alert('生成失败，请重试');
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        function download() {
+            if (!currentBlob) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(currentBlob);
+            a.download = 'entrohub-cover.png';
+            a.click();
+        }
+
+        // Enter key to generate
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.metaKey) {
+                e.preventDefault();
+                generate();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+成员故事_*.png
+output_*.png
+.vercel/
