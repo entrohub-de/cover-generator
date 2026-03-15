@@ -2,7 +2,6 @@
   "outputDirectory": "public",
   "functions": {
     "api/generate.py": {
-      "runtime": "@vercel/python@4",
       "includeFiles": "fonts/**,public/logo.png"
     }
   },
