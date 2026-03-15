@@ -179,8 +179,14 @@
         const textarea = document.getElementById('title');
         const count = document.getElementById('count');
 
+        let debounceTimer = null;
+
         textarea.addEventListener('input', () => {
             count.textContent = textarea.value.length;
+            clearTimeout(debounceTimer);
+            if (textarea.value.trim()) {
+                debounceTimer = setTimeout(generate, 500);
+            }
         });
 
         let currentBlob = null;
