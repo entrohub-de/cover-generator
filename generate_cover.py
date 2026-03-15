@@ -33,7 +33,7 @@ LIGHT_GRAY = (245, 245, 250)        # #F5F5FA
 
 # 尺寸
 WIDTH = 1080
-HEIGHT = 1080
+HEIGHT = 1440
 
 
 def has_cjk(text: str) -> bool:

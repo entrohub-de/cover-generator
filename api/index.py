@@ -17,7 +17,7 @@ BLUE_PRIMARY = (66, 133, 244)
 WHITE = (255, 255, 255)
 BLACK = (33, 33, 33)
 WIDTH = 1080
-HEIGHT = 1080
+HEIGHT = 1440
 
 
 def has_cjk(text):
