@@ -10,9 +10,9 @@ from PIL import Image, ImageDraw, ImageFont
 app = Flask(__name__)
 
 # 路径
-BASE_DIR = Path(__file__).parent.parent
-FONTS_DIR = BASE_DIR / "fonts"
-LOGO_PATH = BASE_DIR / "public" / "logo.png"
+API_DIR = Path(__file__).parent
+FONTS_DIR = API_DIR / "fonts"
+LOGO_PATH = API_DIR / "logo.png"
 
 JAKARTA_FONT = FONTS_DIR / "PlusJakartaSans.ttf"
 NOTO_FONT = FONTS_DIR / "NotoSansCJKsc-Bold.otf"
